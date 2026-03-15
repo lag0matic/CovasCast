@@ -243,20 +243,116 @@ class CovasCastPlugin(PluginBase):
                         default_value=False
                     ),
                     TextSetting(
-                        key="moderation_categories",
-                        label="Categories to filter (comma-separated, leave blank for all)",
-                        type="text",
-                        readonly=False,
-                        placeholder="sexual, sexual/minors, self-harm, hate",
-                        default_value="sexual, sexual/minors, self-harm, hate"
-                    ),
-                    TextSetting(
                         key="openai_api_key",
                         label="OpenAI API Key",
                         type="text",
                         readonly=False,
                         placeholder="sk-...",
                         default_value=""
+                    ),
+                    ToggleSetting(
+                        key="filter_harassment",
+                        label="Filter: Harassment",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
+                    ),
+                    ToggleSetting(
+                        key="filter_harassment_threatening",
+                        label="Filter: Harassment / Threatening",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
+                    ),
+                    ToggleSetting(
+                        key="filter_hate",
+                        label="Filter: Hate",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=True
+                    ),
+                    ToggleSetting(
+                        key="filter_hate_threatening",
+                        label="Filter: Hate / Threatening",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=True
+                    ),
+                    ToggleSetting(
+                        key="filter_sexual",
+                        label="Filter: Sexual",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=True
+                    ),
+                    ToggleSetting(
+                        key="filter_sexual_minors",
+                        label="Filter: Sexual / Minors",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=True
+                    ),
+                    ToggleSetting(
+                        key="filter_violence",
+                        label="Filter: Violence",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
+                    ),
+                    ToggleSetting(
+                        key="filter_violence_graphic",
+                        label="Filter: Violence / Graphic",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
+                    ),
+                    ToggleSetting(
+                        key="filter_self_harm",
+                        label="Filter: Self-harm",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=True
+                    ),
+                    ToggleSetting(
+                        key="filter_self_harm_intent",
+                        label="Filter: Self-harm / Intent",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=True
+                    ),
+                    ToggleSetting(
+                        key="filter_self_harm_instructions",
+                        label="Filter: Self-harm / Instructions",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=True
+                    ),
+                    ToggleSetting(
+                        key="filter_illicit",
+                        label="Filter: Illicit",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
+                    ),
+                    ToggleSetting(
+                        key="filter_illicit_violent",
+                        label="Filter: Illicit / Violent",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
                     ),
                 ]
             )
@@ -275,12 +371,27 @@ class CovasCastPlugin(PluginBase):
         self.moderation_announce = settings.get('moderation_announce', False)
         self.openai_api_key = settings.get('openai_api_key', '').strip()
 
-        # Parse category filter — empty means all categories enforced
-        raw_cats = settings.get('moderation_categories', '').strip()
-        if raw_cats:
-            self.moderation_categories = {c.strip().lower() for c in raw_cats.split(',') if c.strip()}
-        else:
-            self.moderation_categories = set()  # empty = enforce all
+        # Build active category set from individual toggles
+        # Keys map to OpenAI's category names (/ replaced with _ in setting keys)
+        self.moderation_categories = set()
+        category_map = {
+            'filter_harassment':             'harassment',
+            'filter_harassment_threatening': 'harassment/threatening',
+            'filter_hate':                   'hate',
+            'filter_hate_threatening':       'hate/threatening',
+            'filter_sexual':                 'sexual',
+            'filter_sexual_minors':          'sexual/minors',
+            'filter_violence':               'violence',
+            'filter_violence_graphic':       'violence/graphic',
+            'filter_self_harm':              'self-harm',
+            'filter_self_harm_intent':       'self-harm/intent',
+            'filter_self_harm_instructions': 'self-harm/instructions',
+            'filter_illicit':                'illicit',
+            'filter_illicit_violent':        'illicit/violent',
+        }
+        for key, category in category_map.items():
+            if settings.get(key, False):
+                self.moderation_categories.add(category)
 
     # -------------------------------------------------------------------------
     # LIFECYCLE
@@ -600,9 +711,12 @@ class CovasCastPlugin(PluginBase):
                 # Determine which categories triggered
                 flagged_cats = {c for c, v in categories.items() if v}
 
-                # If a category filter is configured, only care about those categories
-                if self.moderation_categories:
-                    flagged_cats = flagged_cats & self.moderation_categories
+                # If no categories are toggled on, nothing gets filtered
+                if not self.moderation_categories:
+                    return False, {}
+
+                # Only care about toggled categories
+                flagged_cats = flagged_cats & self.moderation_categories
 
                 is_flagged = len(flagged_cats) > 0
 
