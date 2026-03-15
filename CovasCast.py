@@ -180,6 +180,7 @@ class CovasCastPlugin(PluginBase):
         self.chat_rate_limiter = RateLimiter(interval_seconds=10.0)
 
         # Settings cache
+        self.settings = {}
         self.channel = ''
         self.mention_trigger = '@covas'
         self.moderation_enabled = False
@@ -365,15 +366,22 @@ class CovasCastPlugin(PluginBase):
 
     def on_settings_changed(self, settings: dict):
         self.settings = settings
-        self.channel = settings.get('channel', '').strip().lstrip('#')
-        self.mention_trigger = settings.get('mention_trigger', '@covas').strip()
-        self.moderation_enabled = settings.get('moderation_enabled', False)
-        self.moderation_announce = settings.get('moderation_announce', False)
-        self.openai_api_key = settings.get('openai_api_key', '').strip()
 
-        # Build active category set from individual toggles
-        # Keys map to OpenAI's category names (/ replaced with _ in setting keys)
-        self.moderation_categories = set()
+    # -------------------------------------------------------------------------
+    # LIFECYCLE
+    # -------------------------------------------------------------------------
+
+    @override
+    def on_chat_start(self, helper: PluginHelper):
+        self.helper = helper
+
+        # Parse settings here, same pattern as Covasify
+        self.channel = self.settings.get('channel', '').strip().lstrip('#')
+        self.mention_trigger = self.settings.get('mention_trigger', '@covas').strip()
+        self.moderation_enabled = self.settings.get('moderation_enabled', False)
+        self.moderation_announce = self.settings.get('moderation_announce', False)
+        self.openai_api_key = self.settings.get('openai_api_key', '').strip()
+
         category_map = {
             'filter_harassment':             'harassment',
             'filter_harassment_threatening': 'harassment/threatening',
@@ -389,17 +397,11 @@ class CovasCastPlugin(PluginBase):
             'filter_illicit':                'illicit',
             'filter_illicit_violent':        'illicit/violent',
         }
-        for key, category in category_map.items():
-            if settings.get(key, False):
-                self.moderation_categories.add(category)
+        self.moderation_categories = {
+            cat for key, cat in category_map.items()
+            if self.settings.get(key, False)
+        }
 
-    # -------------------------------------------------------------------------
-    # LIFECYCLE
-    # -------------------------------------------------------------------------
-
-    @override
-    def on_chat_start(self, helper: PluginHelper):
-        self.helper = helper
         log('info', 'COVASCAST: Chat started')
 
         try:
