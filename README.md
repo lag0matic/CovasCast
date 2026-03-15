@@ -73,10 +73,13 @@ All other chat messages are passively fed into COVAS's context (rate limited to 
 
 ## Content Moderation (Optional)
 
-When enabled, chat messages are checked against OpenAI's moderation API before reaching COVAS. Flagged messages are silently dropped. To enable:
+When enabled, chat messages are checked against OpenAI's moderation API before reaching COVAS. By default, flagged messages are silently dropped. 
+They can be toggled to an announce mode, where COVAS will announce a message was filtered, and under what catagory.
+To enable:
 
 1. Check **Enable OpenAI Content Moderation** in plugin settings
 2. Enter your OpenAI API key
+
 
 Adds a small latency and OpenAI API cost per message. Recommended only if your chat is particularly rowdy.
 
@@ -122,7 +125,7 @@ CovasCast/
 ---
 
 ## Version History
-
+**v.1.0.1** - Added toggle for announcement of filtered messages when using OpenAI moderation.
 **v1.0.0** — Initial release
 - IRC chat connection via TwitchIO
 - `@covas` mention detection with verbal response
