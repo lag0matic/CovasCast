@@ -12,7 +12,7 @@ Built for streamers who want their AI to feel like a genuine part of the broadca
 - **Background chat awareness** — chat is passively fed into COVAS's context so she always knows what's happening, even when not directly addressed
 - **Verbal-only responses** — COVAS speaks her replies out loud (audible on stream) rather than posting text to chat
 - **On-demand chat status** — ask COVAS to recap recent mentions or chat activity
-- **Optional content moderation** — filter chat through OpenAI's moderation API with configurable categories and announce or silent drop behaviour
+- **Optional content moderation** — filter chat through OpenAI's moderation API with per-category toggles and announce or silent drop behaviour
 
 ## How It Works
 
@@ -36,7 +36,7 @@ The easiest way is via [TwitchTokenGenerator](https://twitchtokengenerator.com/)
 
 ### Step 2 — Install the Plugin
 
-> ⚠️ **GitHub extraction note:** When downloading a release from GitHub, the zip file will extract to a folder named something like `CovasCast-v1.0.0`. You must rename this folder to just `CovasCast` before placing it in your plugins directory, otherwise COVAS:NEXT may not load it correctly.
+> ⚠️ **GitHub extraction note:** When downloading a release from GitHub, the zip file will extract to a folder named something like `CovasCast-v1.5.0`. You must rename this folder to just `CovasCast` before placing it in your plugins directory, otherwise COVAS:NEXT may not load it correctly.
 
 1. Download the latest release and extract it
 2. Rename the folder to `CovasCast` (strip the version suffix)
@@ -86,33 +86,29 @@ When enabled, chat messages are checked against OpenAI's moderation API before r
 |---|---|
 | Enable OpenAI Content Moderation | Master on/off switch |
 | Announce filtered messages | On = COVAS verbally flags filtered messages. Off = silent drop |
-| Categories to filter | Comma-separated list of categories to enforce. Leave blank to enforce all |
 | OpenAI API Key | Your OpenAI API key (requires billing set up at platform.openai.com) |
 
-### Category filtering
+### Category toggles
 
-By default only the following categories are enforced, avoiding false positives from normal gaming chat (e.g. "kill those pirates"):
+Each moderation category has its own toggle in the settings panel. Enable only the ones relevant to your stream. The defaults are tuned for gaming chat — categories that generate too many false positives (violence, harassment) are off by default.
 
-```
-sexual, sexual/minors, self-harm, hate
-```
+| Toggle | Category | Default | Notes |
+|---|---|---|---|
+| Filter: Harassment | General harassment | Off | High false positive rate in gaming chat |
+| Filter: Harassment / Threatening | Threatening language | Off | High false positive rate in gaming chat |
+| Filter: Hate | Hate speech | **On** | |
+| Filter: Hate / Threatening | Threatening hate speech | **On** | |
+| Filter: Sexual | Sexual content | **On** | |
+| Filter: Sexual / Minors | Sexual content involving minors | **On** | |
+| Filter: Violence | Violent content | Off | Will catch "kill those pirates" — leave off for gaming |
+| Filter: Violence / Graphic | Graphic violence | Off | |
+| Filter: Self-harm | Self-harm content | **On** | |
+| Filter: Self-harm / Intent | Self-harm intent | **On** | |
+| Filter: Self-harm / Instructions | Self-harm instructions | **On** | |
+| Filter: Illicit | Illicit content | Off | |
+| Filter: Illicit / Violent | Violent illicit content | Off | |
 
-Available categories you can add or remove:
-- `harassment` — general harassment
-- `harassment/threatening` — threatening language
-- `hate` — hate speech
-- `hate/threatening` — threatening hate speech
-- `sexual` — sexual content
-- `sexual/minors` — sexual content involving minors
-- `violence` — violent content *(leave off for gaming chat)*
-- `violence/graphic` — graphic violence
-- `self-harm` — self harm content
-- `self-harm/intent` — self harm intent
-- `self-harm/instructions` — self harm instructions
-- `illicit` — illicit content
-- `illicit/violent` — violent illicit content
-
-> **Gaming tip:** Keep `violence` and `harassment` off the list — they generate too many false positives in gaming chat. Stick to `sexual`, `sexual/minors`, `self-harm`, and `hate` for a clean stream.
+> **Note:** If no category toggles are enabled, moderation will not filter anything even if the master switch is on.
 
 ---
 
@@ -143,7 +139,7 @@ Rough estimates per stream:
 
 **Moderation not catching anything**
 - Check your OpenAI account has a payment method added at platform.openai.com (required even though the moderation API is free)
-- Confirm the category you're testing is in your Categories to filter list
+- Confirm at least one category toggle is enabled in settings
 
 ---
 
@@ -160,12 +156,14 @@ CovasCast/
 ---
 
 ## Version History
-**v1.5.0** — Added moderation catagory toggles. This lets you allow certain things through the filter  
+
+**v1.5.0** — Added per-category moderation toggles. Each of OpenAI's 13 moderation categories now has its own on/off switch in the settings panel, with sensible gaming-friendly defaults.
+
 **v1.0.0** — Initial release
 - IRC chat connection via TwitchIO
 - `@covas` mention detection with verbal response
 - Rate-limited background chat context (10 second intervals)
-- Optional OpenAI content moderation with configurable category filtering
+- Optional OpenAI content moderation
 - Announce or silent drop behaviour for filtered messages
 - Verbal-only responses (no chat posting)
 
@@ -177,4 +175,3 @@ CovasCast/
 **Original concept**: [COVAS-Labs/COVAS-NEXT-Twitch-Integration](https://github.com/COVAS-Labs/COVAS-NEXT-Twitch-Integration)  
 **COVAS:NEXT**: https://ratherrude.github.io/Elite-Dangerous-AI-Integration/  
 **Twitch API**: TwitchIO library
-
