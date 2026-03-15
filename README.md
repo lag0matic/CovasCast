@@ -30,8 +30,7 @@ You need an OAuth token with the following scopes:
 - `chat:read`
 - `chat:edit`
 
-The easiest way is via [TwitchTokenGenerator](https://twitchtokengenerator.com/) — select the scopes above and generate a token. The site gives you three values — you only need the **Access Token**. Prefix it with `oauth:` so it looks like `oauth:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`. The Refresh Token and Client ID are not needed.
-
+The easiest way is via [TwitchTokenGenerator](https://twitchtokengenerator.com/) — select the scopes above and generate a token. The site gives you three values — you only need the **Access Token**. 
 > **Keep your token private.** Treat it like a password.
 
 ### Step 2 — Install the Plugin
@@ -40,14 +39,14 @@ The easiest way is via [TwitchTokenGenerator](https://twitchtokengenerator.com/)
    ```
    %appdata%\com.covas-next.ui\plugins\
    ```
-2. Run `install.bat` from inside the `CovasCast` folder to install dependencies
-3. Restart COVAS:NEXT
-4. Open the COVAS:NEXT menu → navigate to **CovasCast** settings
-5. Fill in your settings:
+
+2. Restart COVAS:NEXT
+3. Open the COVAS:NEXT menu → navigate to **CovasCast** settings
+4. Fill in your settings:
    - **Twitch Channel Name**: your channel name without `#` (e.g. `lag0matic`)
    - **OAuth Token**: your Access Token prefixed with `oauth:`
    - **Mention Trigger**: the text that triggers a verbal response (default: `@covas`)
-6. Start your COVAS chat session — the bot connects automatically
+5. Start your COVAS chat session — the bot connects automatically
 
 ---
 
@@ -97,7 +96,7 @@ Rough estimates per stream:
 ## Troubleshooting
 
 **Bot doesn't connect**
-- Check your OAuth token is correctly pasted with the `oauth:` prefix
+- Check your OAuth token is correctly pasted 
 - Make sure your channel name has no `#` prefix in settings
 - Restart COVAS:NEXT after saving settings
 
@@ -117,8 +116,7 @@ CovasCast/
   CovasCast.py         # Main plugin
   manifest.json        # Plugin metadata
   requirements.txt     # Python dependencies
-  install.bat          # Dependency installer (run this first)
-  deps/                # Bundled Python dependencies (added after running install.bat)
+  deps/                # Bundled Python dependencies 
 ```
 
 ---
