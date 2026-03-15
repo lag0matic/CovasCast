@@ -160,7 +160,7 @@ CovasCast/
 ---
 
 ## Version History
-**v1.5.0** - Added moderation catagories to the OpenAI moderation. Lets you toggle off certain things to allow them through the filter. 
+**v1.5.0** — Added moderation catagories to the OpenAI moderation. Lets you toggle off certain things to allow them through the filter
 **v1.0.0** — Initial release
 - IRC chat connection via TwitchIO
 - `@covas` mention detection with verbal response
