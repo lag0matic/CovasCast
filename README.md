@@ -51,7 +51,8 @@ The easiest way is via [TwitchTokenGenerator](https://twitchtokengenerator.com/)
    - **Twitch Channel Name**: your channel name without `#` (e.g. `lag0matic`)
    - **OAuth Token**: your Access Token prefixed with `oauth:`
    - **Mention Trigger**: the text that triggers a verbal response (default: `@covas`)
-8. Start your COVAS chat session — the bot connects automatically
+8. Re-start Covas:Next to make sure settings save properly
+9. Start your Covas:Next chat session - the bot should connect automatically 
 
 ---
 
