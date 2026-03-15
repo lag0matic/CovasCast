@@ -184,6 +184,7 @@ class CovasCastPlugin(PluginBase):
         self.mention_trigger = '@covas'
         self.moderation_enabled = False
         self.moderation_announce = False
+        self.moderation_categories = set()
         self.openai_api_key = ''
 
     settings_config = PluginSettings(
@@ -242,6 +243,14 @@ class CovasCastPlugin(PluginBase):
                         default_value=False
                     ),
                     TextSetting(
+                        key="moderation_categories",
+                        label="Categories to filter (comma-separated, leave blank for all)",
+                        type="text",
+                        readonly=False,
+                        placeholder="sexual, sexual/minors, self-harm, hate",
+                        default_value="sexual, sexual/minors, self-harm, hate"
+                    ),
+                    TextSetting(
                         key="openai_api_key",
                         label="OpenAI API Key",
                         type="text",
@@ -265,6 +274,13 @@ class CovasCastPlugin(PluginBase):
         self.moderation_enabled = settings.get('moderation_enabled', False)
         self.moderation_announce = settings.get('moderation_announce', False)
         self.openai_api_key = settings.get('openai_api_key', '').strip()
+
+        # Parse category filter — empty means all categories enforced
+        raw_cats = settings.get('moderation_categories', '').strip()
+        if raw_cats:
+            self.moderation_categories = {c.strip().lower() for c in raw_cats.split(',') if c.strip()}
+        else:
+            self.moderation_categories = set()  # empty = enforce all
 
     # -------------------------------------------------------------------------
     # LIFECYCLE
@@ -563,7 +579,8 @@ class CovasCastPlugin(PluginBase):
     # -------------------------------------------------------------------------
 
     def _check_moderation(self, text: str) -> tuple:
-        """Check text against OpenAI moderation API. Returns (is_flagged, categories)."""
+        """Check text against OpenAI moderation API. Returns (is_flagged, categories).
+        Only flags if one of the configured categories is triggered."""
         if not self.openai_api_key:
             return False, {}
         try:
@@ -578,12 +595,21 @@ class CovasCastPlugin(PluginBase):
             )
             if response.status_code == 200:
                 result = response.json()["results"][0]
-                is_flagged = result["flagged"]
                 categories = result["categories"]
+
+                # Determine which categories triggered
+                flagged_cats = {c for c, v in categories.items() if v}
+
+                # If a category filter is configured, only care about those categories
+                if self.moderation_categories:
+                    flagged_cats = flagged_cats & self.moderation_categories
+
+                is_flagged = len(flagged_cats) > 0
+
                 if is_flagged:
-                    flagged_cats = [c for c, v in categories.items() if v]
                     log('info', f'COVASCAST: Message flagged — {", ".join(flagged_cats)}')
-                return is_flagged, categories
+
+                return is_flagged, {c: (c in flagged_cats) for c in categories}
             return False, {}
         except Exception as e:
             log('info', f'COVASCAST: Moderation check failed: {str(e)}')
