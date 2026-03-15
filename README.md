@@ -35,7 +35,7 @@ The easiest way is via [TwitchTokenGenerator](https://twitchtokengenerator.com/)
 
 ### Step 2 — Install the Plugin
 
-1. Place the `CovasCast` folder in:
+1. Place the `CovasCast` folder in:  ***REMOVE ANY VERSIONING: The folder should only be `CoveCast`***
    ```
    %appdata%\com.covas-next.ui\plugins\
    ```
