@@ -97,9 +97,21 @@ class TwitchBot(twitchio.Client):
 
         # OpenAI moderation check if enabled
         if self.plugin.moderation_enabled and self.plugin.openai_api_key:
-            flagged, _ = self.plugin._check_moderation(content)
+            flagged, categories = self.plugin._check_moderation(content)
             if flagged:
                 log('info', f'COVASCAST: Message from {author} flagged by moderation, skipping')
+                if self.plugin.moderation_announce and self.plugin.helper:
+                    try:
+                        flagged_cats = [c for c, v in categories.items() if v]
+                        self.plugin.helper.dispatch_event(PluginEvent(
+                            plugin_event_name='twitch_moderated',
+                            plugin_event_content={
+                                'author': author,
+                                'categories': ', '.join(flagged_cats) if flagged_cats else 'policy violation'
+                            }
+                        ))
+                    except Exception as e:
+                        log('info', f'COVASCAST: moderation dispatch failed: {str(e)}')
                 return
 
         # Check for @COVAS mention — immediate reply event
@@ -171,6 +183,7 @@ class CovasCastPlugin(PluginBase):
         self.channel = ''
         self.mention_trigger = '@covas'
         self.moderation_enabled = False
+        self.moderation_announce = False
         self.openai_api_key = ''
 
     settings_config = PluginSettings(
@@ -220,6 +233,14 @@ class CovasCastPlugin(PluginBase):
                         placeholder=None,
                         default_value=False
                     ),
+                    ToggleSetting(
+                        key="moderation_announce",
+                        label="Announce filtered messages (off = silent drop)",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
+                    ),
                     TextSetting(
                         key="openai_api_key",
                         label="OpenAI API Key",
@@ -242,6 +263,7 @@ class CovasCastPlugin(PluginBase):
         self.channel = settings.get('channel', '').strip().lstrip('#')
         self.mention_trigger = settings.get('mention_trigger', '@covas').strip()
         self.moderation_enabled = settings.get('moderation_enabled', False)
+        self.moderation_announce = settings.get('moderation_announce', False)
         self.openai_api_key = settings.get('openai_api_key', '').strip()
 
     # -------------------------------------------------------------------------
@@ -269,6 +291,11 @@ class CovasCastPlugin(PluginBase):
                 name='twitch_chat',
                 should_reply_check=lambda e: False,  # Background context only
                 prompt_generator=self._chat_background_prompt
+            )
+            helper.register_event(
+                name='twitch_moderated',
+                should_reply_check=lambda e: True,
+                prompt_generator=self._moderated_prompt
             )
 
             # Register tools
@@ -421,6 +448,15 @@ class CovasCastPlugin(PluginBase):
         author = event.plugin_event_content.get('author', 'unknown')
         message = event.plugin_event_content.get('message', '')
         return f"Twitch chat — {author}: {message}"
+
+    def _moderated_prompt(self, event: PluginEvent) -> str:
+        """Fired when a message is filtered by content moderation."""
+        author = event.plugin_event_content.get('author', 'unknown')
+        categories = event.plugin_event_content.get('categories', 'policy violation')
+        return (
+            f"A message from Twitch chatter {author} was filtered by content moderation "
+            f"({categories}). Briefly acknowledge that a message was filtered if appropriate."
+        )
 
     # -------------------------------------------------------------------------
     # STATUS GENERATOR
