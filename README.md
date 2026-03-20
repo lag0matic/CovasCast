@@ -23,7 +23,7 @@ CovasCast runs a TwitchIO IRC client in a background thread. It connects to your
 By default COVAS responds verbally only. Bot chat posting and moderation actions are opt-in via individual toggles in settings.
 
 > ### ⚠️ Designed for a Dedicated Bot Account
-> CovasCast is intended to run on a **separate Twitch account**, not your personal broadcaster account. Create a second Twitch account for your bot (e.g. `CassiaAI`), generate an OAuth token for that account, and enter it in the plugin settings. Then mod the bot in your channel with `/mod CassiaAI`.
+> CovasCast is intended to run on a **separate Twitch account**, not your personal broadcaster account. Create a second Twitch account for your bot (e.g. `MyBotName`), generate an OAuth token for that account, and enter it in the plugin settings. Then mod the bot in your channel with `/mod MyBotName`.
 >
 > This is the standard approach used by all legitimate Twitch bots (Nightbot, StreamElements, etc.) and is **fully ToS compliant**. Running it on your personal broadcaster account will work for read-only listening, but is not recommended if you enable chat posting or moderation actions.
 
@@ -148,6 +148,8 @@ Timeouts can be lifted early using the unban/untimeout command. Maximum duration
 
 ---
 
+## Content Moderation (Optional)
+
 When enabled, chat messages are checked against OpenAI's moderation API before reaching COVAS.
 
 ### Settings
@@ -155,7 +157,7 @@ When enabled, chat messages are checked against OpenAI's moderation API before r
 | Setting | Description |
 |---|---|
 | Enable OpenAI Content Moderation | Master on/off switch |
-| Announce filtered messages | On = COVAS verbally flags filtered messages. Off = silent drop |
+| Announce filtered messages | On = the AI verbally flags filtered messages. Off = silent drop |
 | OpenAI API Key | Your OpenAI API key (requires billing set up at platform.openai.com) |
 
 ### Category toggles
