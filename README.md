@@ -8,9 +8,9 @@ Built for streamers who want their AI to feel like a genuine part of the broadca
 
 ## What It Does
 
-- **`@covas` mentions** — COVAS responds verbally when chat tags her directly
-- **Background chat awareness** — chat is passively fed into COVAS's context so she always knows what's happening, even when not directly addressed
-- **Verbal-only responses** — COVAS speaks her replies out loud (audible on stream) rather than posting text to chat
+- **`@covas` mentions** — COVAS responds verbally when chat tags it directly
+- **Background chat awareness** — chat is passively fed into COVAS's context so it always knows what's happening, even when not directly addressed
+- **Verbal-only responses** — COVAS speaks its replies out loud (audible on stream) rather than posting text to chat
 - **Bot chat posting** — optionally allow COVAS to post messages directly to chat (toggle)
 - **Moderation actions** — optionally allow COVAS to timeout, ban, unban, or delete messages (individual toggles, all off by default)
 - **On-demand chat status** — ask COVAS to recap recent mentions or chat activity
@@ -71,7 +71,7 @@ The easiest way is via [TwitchTokenGenerator](https://twitchtokengenerator.com/)
 ## How COVAS Responds
 
 ### Direct mentions
-When chat includes your mention trigger (default `@covas`), COVAS responds verbally. Her response is audible on stream — viewers hear it through your audio. If chat posting is enabled, she may also respond in chat.
+When chat includes your mention trigger (default `@covas`), COVAS responds verbally. Its response is audible on stream — viewers hear it through your audio. If chat posting is enabled, it may also respond in chat.
 
 ```
 Chat:  viewer: @covas what do you think of this build?
