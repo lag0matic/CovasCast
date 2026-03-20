@@ -1,4 +1,4 @@
-# CovasCast v1.5.0
+# CovasCast v2.0.0
 
 > ⚠️ **Note:** This plugin was built with AI assistance (Claude). I'm not a Python expert — there may be bugs or rough edges. Feedback welcome!
 
@@ -11,6 +11,8 @@ Built for streamers who want their AI to feel like a genuine part of the broadca
 - **`@covas` mentions** — COVAS responds verbally when chat tags her directly
 - **Background chat awareness** — chat is passively fed into COVAS's context so she always knows what's happening, even when not directly addressed
 - **Verbal-only responses** — COVAS speaks her replies out loud (audible on stream) rather than posting text to chat
+- **Bot chat posting** — optionally allow COVAS to post messages directly to chat (toggle)
+- **Moderation actions** — optionally allow COVAS to timeout, ban, unban, or delete messages (individual toggles, all off by default)
 - **On-demand chat status** — ask COVAS to recap recent mentions or chat activity
 - **Optional content moderation** — filter chat through OpenAI's moderation API with per-category toggles and announce or silent drop behaviour
 
@@ -18,7 +20,12 @@ Built for streamers who want their AI to feel like a genuine part of the broadca
 
 CovasCast runs a TwitchIO IRC client in a background thread. It connects to your channel's chat, listens for messages, and feeds them into COVAS's context. Direct mentions trigger an immediate verbal response. All other chat is rate-limited and added to context passively — so COVAS can reference what chat has been saying without responding to every message.
 
-COVAS responds verbally rather than posting to chat. Since she's audible on stream, viewers hear her responses naturally without the chat feed being cluttered.
+By default COVAS responds verbally only. Bot chat posting and moderation actions are opt-in via individual toggles in settings.
+
+> ### ⚠️ Designed for a Dedicated Bot Account
+> CovasCast is intended to run on a **separate Twitch account**, not your personal broadcaster account. Create a second Twitch account for your bot (e.g. `CassiaAI`), generate an OAuth token for that account, and enter it in the plugin settings. Then mod the bot in your channel with `/mod CassiaAI`.
+>
+> This is the standard approach used by all legitimate Twitch bots (Nightbot, StreamElements, etc.) and is **fully ToS compliant**. Running it on your personal broadcaster account will work for read-only listening, but is not recommended if you enable chat posting or moderation actions.
 
 ---
 
@@ -27,16 +34,22 @@ COVAS responds verbally rather than posting to chat. Since she's audible on stre
 ### Step 1 — Get a Twitch OAuth Token
 
 You need an OAuth token with the following scopes:
+
+**For chat reading and posting:**
 - `chat:read`
 - `chat:edit`
 
-The easiest way is via [TwitchTokenGenerator](https://twitchtokengenerator.com/) — select the scopes above and generate a token. The site gives you three values — you only need the **Access Token**. Prefix it with `oauth:` so it looks like `oauth:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`. The Refresh Token and Client ID are not needed.
+**If enabling moderation actions (requires a modded bot account):**
+- `moderator:manage:banned_users`
+- `moderator:manage:chat_messages`
+
+The easiest way is via [TwitchTokenGenerator](https://twitchtokengenerator.com/) — select the scopes you need and generate a token. The site gives you three values — you only need the **Access Token**. Prefix it with `oauth:` so it looks like `oauth:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`. The Refresh Token and Client ID are not needed.
 
 > **Keep your token private.** Treat it like a password.
 
 ### Step 2 — Install the Plugin
 
-> ⚠️ **GitHub extraction note:** When downloading a release from GitHub, the zip file will extract to a folder named something like `CovasCast-v1.5.0`. You must rename this folder to just `CovasCast` before placing it in your plugins directory, otherwise COVAS:NEXT may not load it correctly.
+> ⚠️ **GitHub extraction note:** When downloading a release from GitHub, the zip file will extract to a folder named something like `CovasCast-v2.0.0`. You must rename this folder to just `CovasCast` before placing it in your plugins directory, otherwise COVAS:NEXT may not load it correctly.
 
 1. Download the latest release and extract it
 2. Rename the folder to `CovasCast` (strip the version suffix)
@@ -51,23 +64,22 @@ The easiest way is via [TwitchTokenGenerator](https://twitchtokengenerator.com/)
    - **Twitch Channel Name**: your channel name without `#` (e.g. `lag0matic`)
    - **OAuth Token**: your Access Token prefixed with `oauth:`
    - **Mention Trigger**: the text that triggers a verbal response (default: `@covas`)
-8. Re-start Covas:Next to make sure settings save properly
-9. Start your Covas:Next chat session - the bot should connect automatically 
+8. Start your COVAS chat session — the bot connects automatically
 
 ---
 
 ## How COVAS Responds
 
 ### Direct mentions
-When chat includes your mention trigger (default `@covas`), COVAS responds verbally. Her response is audible on stream — viewers hear it through your audio.
+When chat includes your mention trigger (default `@covas`), COVAS responds verbally. Her response is audible on stream — viewers hear it through your audio. If chat posting is enabled, she may also respond in chat.
 
 ```
-Chat:  lag0matic: @covas what do you think of this build?
+Chat:  viewer: @covas what do you think of this build?
 COVAS: [responds verbally on stream audio]
 ```
 
 ### Background chat awareness
-All other chat messages are passively fed into COVAS's context (rate limited to one update per 10 seconds). COVAS builds up awareness of what chat is discussing without responding to every message. If chat has been talking about something for a few minutes, COVAS will know about it when asked.
+All other chat messages are passively fed into COVAS's context (rate limited to one update per 10 seconds). COVAS builds up awareness of what chat is discussing without responding to every message.
 
 ### On-demand status
 ```
@@ -77,7 +89,64 @@ All other chat messages are passively fed into COVAS's context (rate limited to 
 
 ---
 
-## Content Moderation (Optional)
+## Bot Capabilities (Optional)
+
+All bot actions are **off by default**. Enable only what you're comfortable with. Moderation actions require the bot account to be modded in your channel.
+
+| Toggle | What it enables | Requires mod |
+|---|---|---|
+| Allow: Post messages to chat | COVAS can send messages to chat | No |
+| Allow: Delete messages | COVAS can delete specific messages | Yes |
+| Allow: Timeout users | COVAS can temporarily mute users | Yes |
+| Allow: Ban users | COVAS can permanently ban users | Yes |
+| Allow: Unban / untimeout users | COVAS can lift bans and timeouts | Yes |
+
+> **Recommendation:** Think carefully before enabling ban — that's a permanent action. Timeout is safer for AI moderation since it's reversible. If you enable moderation actions, use a dedicated bot account rather than your broadcaster token.
+
+---
+
+## Bot Voice Commands
+
+These commands are spoken by **you** (the streamer) during your COVAS session. COVAS understands natural language so you don't need exact phrasing — these are just examples.
+
+> **Important:** Bot capability toggles must be enabled in settings before these commands will work. Moderation commands also require the bot account to be modded in your channel first.
+
+### Posting to Chat
+```
+"Tell chat we're taking a short break"
+"Say hello to everyone in chat"
+"Post in chat that the giveaway is starting"
+```
+
+### Timeout (Temporary Mute)
+```
+"Timeout SomeBadActor for 10 minutes"
+"Mute SomeBadActor for 2 hours"
+"Give SomeBadActor a 5 minute timeout for spamming"
+```
+Timeouts can be lifted early using the unban/untimeout command. Maximum duration is 14 days.
+
+### Ban (Permanent)
+```
+"Ban SomeBadActor"
+"Permanently ban SomeBadActor for hate speech"
+```
+> ⚠️ Bans are permanent. Use timeout for anything you might want to reverse.
+
+### Unban / Untimeout
+```
+"Unban SomeBadActor"
+"Untimeout SomeBadActor, they've calmed down"
+"Lift the ban on SomeBadActor"
+```
+
+### Delete a Message
+```
+"Delete that last message from SomeBadActor"
+```
+> **Note:** Message deletion requires COVAS to know the message ID, which isn't always available from context. This command may not work reliably in all situations. Timeout is a more dependable way to deal with a problematic message after the fact.
+
+---
 
 When enabled, chat messages are checked against OpenAI's moderation API before reaching COVAS.
 
@@ -91,7 +160,7 @@ When enabled, chat messages are checked against OpenAI's moderation API before r
 
 ### Category toggles
 
-Each moderation category has its own toggle in the settings panel. Enable only the ones relevant to your stream. The defaults are tuned for gaming chat — categories that generate too many false positives (violence, harassment) are off by default.
+Each moderation category has its own toggle. The defaults are tuned for gaming chat — categories that generate too many false positives (violence, harassment) are off by default.
 
 | Toggle | Category | Default | Notes |
 |---|---|---|---|
@@ -138,6 +207,11 @@ Rough estimates per stream:
 **"Not connected to Twitch"**
 - Your OAuth token may have expired — generate a new one and update settings
 
+**Moderation actions not working**
+- The bot account must be modded in your channel — run `/mod BotName` in your chat
+- Make sure the relevant OAuth token scopes are included when generating your token
+- Confirm the relevant capability toggle is enabled in settings
+
 **Moderation not catching anything**
 - Check your OpenAI account has a payment method added at platform.openai.com (required even though the moderation API is free)
 - Confirm at least one category toggle is enabled in settings
@@ -157,6 +231,12 @@ CovasCast/
 ---
 
 ## Version History
+
+**v2.0.0** — Bot capabilities and moderation actions
+- Added optional chat posting — COVAS can now post messages to Twitch chat (toggle)
+- Added moderation actions — timeout, ban, unban, delete message (individual toggles, all off by default)
+- All capabilities are opt-in with sensible off defaults — nothing fires without explicit permission
+- Added dedicated bot account guidance — use a separate Twitch account for full bot functionality
 
 **v1.5.0** — Added per-category moderation toggles. Each of OpenAI's 13 moderation categories now has its own on/off switch in the settings panel, with sensible gaming-friendly defaults.
 

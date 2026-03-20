@@ -34,6 +34,24 @@ class EmptyParams(BaseModel):
 class ChatStatusParams(BaseModel):
     limit: Optional[int] = 5           # Number of recent mentions to retrieve
 
+class SendChatParams(BaseModel):
+    message: str                        # Message to post in Twitch chat
+
+class TimeoutParams(BaseModel):
+    username: str                       # Twitch username to timeout
+    duration: Optional[int] = 60       # Duration in seconds (default 60)
+    reason: Optional[str] = None       # Optional reason
+
+class BanParams(BaseModel):
+    username: str                       # Twitch username to ban
+    reason: Optional[str] = None       # Optional reason
+
+class UnbanParams(BaseModel):
+    username: str                       # Twitch username to unban or untimeout
+
+class DeleteMessageParams(BaseModel):
+    message_id: str                     # ID of the message to delete
+
 # ============================================================================
 # RATE LIMITER
 # Prevents background chat flooding the context window during raids or hype.
@@ -188,6 +206,13 @@ class CovasCastPlugin(PluginBase):
         self.moderation_categories = set()
         self.openai_api_key = ''
 
+        # Bot capability flags
+        self.allow_post_chat = False
+        self.allow_delete_messages = False
+        self.allow_timeout = False
+        self.allow_ban = False
+        self.allow_unban = False
+
     settings_config = PluginSettings(
         key="CovasCastPlugin",
         label="CovasCast",
@@ -220,6 +245,52 @@ class CovasCastPlugin(PluginBase):
                         readonly=False,
                         placeholder="@covas",
                         default_value="@covas"
+                    ),
+                ]
+            ),
+            SettingsGrid(
+                key="bot_capabilities",
+                label="Bot Capabilities",
+                fields=[
+                    ToggleSetting(
+                        key="allow_post_chat",
+                        label="Allow: Post messages to chat",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
+                    ),
+                    ToggleSetting(
+                        key="allow_delete_messages",
+                        label="Allow: Delete messages (requires mod)",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
+                    ),
+                    ToggleSetting(
+                        key="allow_timeout",
+                        label="Allow: Timeout users (requires mod)",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
+                    ),
+                    ToggleSetting(
+                        key="allow_ban",
+                        label="Allow: Ban users (requires mod)",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
+                    ),
+                    ToggleSetting(
+                        key="allow_unban",
+                        label="Allow: Unban / untimeout users (requires mod)",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=False
                     ),
                 ]
             ),
@@ -402,6 +473,13 @@ class CovasCastPlugin(PluginBase):
             if self.settings.get(key, False)
         }
 
+        # Bot capability flags
+        self.allow_post_chat = self.settings.get('allow_post_chat', False)
+        self.allow_delete_messages = self.settings.get('allow_delete_messages', False)
+        self.allow_timeout = self.settings.get('allow_timeout', False)
+        self.allow_ban = self.settings.get('allow_ban', False)
+        self.allow_unban = self.settings.get('allow_unban', False)
+
         log('info', 'COVASCAST: Chat started')
 
         try:
@@ -433,6 +511,38 @@ class CovasCastPlugin(PluginBase):
                 "Get recent Twitch chat mentions and channel status on demand.",
                 ChatStatusParams, self.twitch_status, 'global'
             )
+
+            # Conditionally register bot capability tools based on settings
+            if self.allow_post_chat:
+                helper.register_action(
+                    'twitch_send_chat',
+                    "Post a message to Twitch chat.",
+                    SendChatParams, self.twitch_send_chat, 'global'
+                )
+            if self.allow_delete_messages:
+                helper.register_action(
+                    'twitch_delete_message',
+                    "Delete a specific message from Twitch chat by message ID.",
+                    DeleteMessageParams, self.twitch_delete_message, 'global'
+                )
+            if self.allow_timeout:
+                helper.register_action(
+                    'twitch_timeout',
+                    "Timeout a Twitch user. Specify username, duration in seconds, and optional reason.",
+                    TimeoutParams, self.twitch_timeout, 'global'
+                )
+            if self.allow_ban:
+                helper.register_action(
+                    'twitch_ban',
+                    "Permanently ban a Twitch user. Specify username and optional reason.",
+                    BanParams, self.twitch_ban, 'global'
+                )
+            if self.allow_unban:
+                helper.register_action(
+                    'twitch_unban',
+                    "Unban or untimeout a Twitch user by username.",
+                    UnbanParams, self.twitch_unban, 'global'
+                )
 
             # Register status generator
             helper.register_status_generator(self.generate_twitch_status)
@@ -542,9 +652,10 @@ class CovasCastPlugin(PluginBase):
     def _mention_prompt(self, event: PluginEvent) -> str:
         author = event.plugin_event_content.get('author', 'Someone')
         message = event.plugin_event_content.get('message', '')
+        chat_note = " You may also respond in chat using twitch_send_chat." if self.allow_post_chat else ""
         return (
             f"Twitch chatter {author} mentioned you in chat: \"{message}\". "
-            f"Respond verbally to their message."
+            f"Respond verbally to their message.{chat_note}"
         )
 
     def _alert_prompt(self, event: PluginEvent) -> str:
@@ -686,6 +797,149 @@ class CovasCastPlugin(PluginBase):
         except Exception as e:
             log('info', f'COVASCAST: Status check failed: {str(e)}')
             return f"COVASCAST: Failed to get status — {str(e)}"
+
+    def twitch_delete_message(self, args, projected_states) -> str:
+        """Delete a specific message from Twitch chat."""
+        try:
+            if not self.connected or not self.bot:
+                return "COVASCAST: Not connected to Twitch."
+            if not self.allow_delete_messages:
+                return "COVASCAST: Delete messages not enabled in settings."
+
+            channel = self.channel
+            msg_id = args.message_id
+
+            async def delete():
+                broadcaster = await self.bot.fetch_users(names=[channel])
+                if not broadcaster:
+                    raise Exception(f"Could not find broadcaster: {channel}")
+                moderator = await self.bot.fetch_users(names=[self.bot.nick])
+                if not moderator:
+                    raise Exception("Could not fetch bot user")
+                await broadcaster[0].delete_chat_messages(
+                    token=self.settings.get('oauth_token', '').lstrip('oauth:').strip(),
+                    moderator_id=moderator[0].id,
+                    message_id=msg_id
+                )
+
+            self._run_async(delete())
+            log('info', f'COVASCAST: Deleted message {msg_id}')
+            return f"COVASCAST: Message deleted."
+
+        except Exception as e:
+            log('info', f'COVASCAST: Delete message failed: {str(e)}')
+            return f"COVASCAST: Failed to delete message — {str(e)}"
+
+    def twitch_timeout(self, args, projected_states) -> str:
+        """Timeout a Twitch user."""
+        try:
+            if not self.connected or not self.bot:
+                return "COVASCAST: Not connected to Twitch."
+            if not self.allow_timeout:
+                return "COVASCAST: Timeout not enabled in settings."
+
+            username = args.username.strip().lstrip('@')
+            duration = max(1, min(args.duration or 60, 1209600))
+            reason = args.reason or ''
+            channel = self.channel
+
+            async def timeout():
+                broadcaster = await self.bot.fetch_users(names=[channel])
+                if not broadcaster:
+                    raise Exception(f"Could not find broadcaster: {channel}")
+                moderator = await self.bot.fetch_users(names=[self.bot.nick])
+                if not moderator:
+                    raise Exception("Could not fetch bot user")
+                target = await self.bot.fetch_users(names=[username])
+                if not target:
+                    raise Exception(f"Could not find user: {username}")
+                await broadcaster[0].timeout_user(
+                    token=self.settings.get('oauth_token', '').lstrip('oauth:').strip(),
+                    moderator_id=moderator[0].id,
+                    user_id=target[0].id,
+                    duration=duration,
+                    reason=reason
+                )
+
+            self._run_async(timeout())
+            log('info', f'COVASCAST: Timed out {username} for {duration}s')
+            return f"COVASCAST: {username} timed out for {duration} seconds."
+
+        except Exception as e:
+            log('info', f'COVASCAST: Timeout failed: {str(e)}')
+            return f"COVASCAST: Failed to timeout {args.username} — {str(e)}"
+
+    def twitch_ban(self, args, projected_states) -> str:
+        """Permanently ban a Twitch user."""
+        try:
+            if not self.connected or not self.bot:
+                return "COVASCAST: Not connected to Twitch."
+            if not self.allow_ban:
+                return "COVASCAST: Ban not enabled in settings."
+
+            username = args.username.strip().lstrip('@')
+            reason = args.reason or ''
+            channel = self.channel
+
+            async def ban():
+                broadcaster = await self.bot.fetch_users(names=[channel])
+                if not broadcaster:
+                    raise Exception(f"Could not find broadcaster: {channel}")
+                moderator = await self.bot.fetch_users(names=[self.bot.nick])
+                if not moderator:
+                    raise Exception("Could not fetch bot user")
+                target = await self.bot.fetch_users(names=[username])
+                if not target:
+                    raise Exception(f"Could not find user: {username}")
+                await broadcaster[0].ban_user(
+                    token=self.settings.get('oauth_token', '').lstrip('oauth:').strip(),
+                    moderator_id=moderator[0].id,
+                    user_id=target[0].id,
+                    reason=reason
+                )
+
+            self._run_async(ban())
+            log('info', f'COVASCAST: Banned {username}')
+            return f"COVASCAST: {username} has been banned."
+
+        except Exception as e:
+            log('info', f'COVASCAST: Ban failed: {str(e)}')
+            return f"COVASCAST: Failed to ban {args.username} — {str(e)}"
+
+    def twitch_unban(self, args, projected_states) -> str:
+        """Unban or untimeout a Twitch user."""
+        try:
+            if not self.connected or not self.bot:
+                return "COVASCAST: Not connected to Twitch."
+            if not self.allow_unban:
+                return "COVASCAST: Unban not enabled in settings."
+
+            username = args.username.strip().lstrip('@')
+            channel = self.channel
+
+            async def unban():
+                broadcaster = await self.bot.fetch_users(names=[channel])
+                if not broadcaster:
+                    raise Exception(f"Could not find broadcaster: {channel}")
+                moderator = await self.bot.fetch_users(names=[self.bot.nick])
+                if not moderator:
+                    raise Exception("Could not fetch bot user")
+                target = await self.bot.fetch_users(names=[username])
+                if not target:
+                    raise Exception(f"Could not find user: {username}")
+                await broadcaster[0].unban_user(
+                    token=self.settings.get('oauth_token', '').lstrip('oauth:').strip(),
+                    moderator_id=moderator[0].id,
+                    user_id=target[0].id
+                )
+
+            self._run_async(unban())
+            log('info', f'COVASCAST: Unbanned {username}')
+            return f"COVASCAST: {username} has been unbanned."
+
+        except Exception as e:
+            log('info', f'COVASCAST: Unban failed: {str(e)}')
+            return f"COVASCAST: Failed to unban {args.username} — {str(e)}"
 
     # -------------------------------------------------------------------------
     # OPENAI MODERATION
